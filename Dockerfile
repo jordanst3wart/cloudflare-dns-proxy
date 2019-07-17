@@ -1,25 +1,22 @@
-FROM golang:alpine as gobuild
-# from https://hub.docker.com/r/visibilityspots/cloudflared/dockerfile
+FROM ubuntu:latest
 
-ARG GOARCH
-ARG GOARM
+WORKDIR /tmp
+RUN apt-get update && \
+    apt-get install curl -y
+RUN curl https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-linux-amd64.deb -o cloudflared-stable-linux-amd64.deb
+RUN dpkg -i cloudflared-stable-linux-amd64.deb
+#sudo apt-get install -f
+## instructions here
+# just use the default options
+CMD cloudflared proxy-dns
+#RUN mkdir -p /usr/local/etc/cloudflared
+#RUN cat << EOF > /usr/local/etc/cloudflared/config.yml
+#proxy-dns: true
+#proxy-dns-upstream:
+# - https://1.1.1.1/dns-query
+# - https://1.0.0.1/dns-query
+#EOF
+#
+#RUN sudo cloudflared service install
 
-RUN apk update; \
-	apk add git;\
-	go get -v github.com/cloudflare/cloudflared/cmd/cloudflared
-WORKDIR /go/src/github.com/cloudflare/cloudflared/cmd/cloudflared
-RUN GOARCH=${GOARCH} GOARM=${GOARM} go build ./
-
-# from scratch would be better
-FROM multiarch/alpine:${ARCH}-edge
-
-LABEL maintainer="Jan Collijs"
-
-RUN apk add --no-cache ca-certificates; \
-        rm -rf /var/cache/apk/*;
-
-COPY --from=gobuild /go/src/github.com/cloudflare/cloudflared/cmd/cloudflared/cloudflared /usr/local/bin/cloudflared
-
-CMD ["/bin/sh", "-c", "/usr/local/bin/cloudflared proxy-dns \
-    --address 0.0.0.0 --port 54 --upstream https://1.1.1.1/.well-known/dns-query \
-    --upstream https://1.0.0.1/.well-known/dns-query"]
+# would like to use standalone binary... https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-linux-amd64.tgz
